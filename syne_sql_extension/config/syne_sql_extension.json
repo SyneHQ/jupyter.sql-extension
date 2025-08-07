@@ -1,6 +1,6 @@
 {
-  "jupyter_sql_extension": {
-    "_comment": "Jupyter SQL Extension - Production Configuration",
+  "syne_sql_extension": {
+    "_comment": "Syne SQL Extension - Production Configuration",
     "_comment2": "This file is installed system-wide with the extension",
     "_comment3": "For sensitive data, use environment variables",
     
