@@ -1,0 +1,227 @@
+/* Jupyter SQL Extension - CSS Styles */
+
+/* SQL Result Container */
+.sql-result {
+    margin: 10px 0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* SQL Result Table */
+.sql-result table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+}
+
+.sql-result th,
+.sql-result td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+    font-size: 14px;
+}
+
+.sql-result th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #495057;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.sql-result tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* SQL Metadata */
+.sql-metadata {
+    padding: 8px 12px;
+    background-color: #f8f9fa;
+    border-top: 1px solid #ddd;
+    font-size: 12px;
+    color: #6c757d;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.sql-metadata strong {
+    color: #495057;
+}
+
+/* SQL Error Messages */
+.sql-error {
+    border-left: 4px solid #dc3545;
+    padding: 12px;
+    margin: 10px 0;
+    background-color: #f8d7da;
+    border-radius: 4px;
+    color: #721c24;
+}
+
+.sql-error strong {
+    color: #721c24;
+}
+
+/* SQL Warning Messages */
+.sql-warning {
+    border-left: 4px solid #ffc107;
+    padding: 12px;
+    margin: 10px 0;
+    background-color: #fff3cd;
+    border-radius: 4px;
+    color: #856404;
+}
+
+.sql-warning strong {
+    color: #856404;
+}
+
+/* SQL Info Messages */
+.sql-info {
+    border-left: 4px solid #17a2b8;
+    padding: 12px;
+    margin: 10px 0;
+    background-color: #d1ecf1;
+    border-radius: 4px;
+    color: #0c5460;
+}
+
+.sql-info strong {
+    color: #0c5460;
+}
+
+/* SQL Success Messages */
+.sql-success {
+    border-left: 4px solid #28a745;
+    padding: 12px;
+    margin: 10px 0;
+    background-color: #d4edda;
+    border-radius: 4px;
+    color: #155724;
+}
+
+.sql-success strong {
+    color: #155724;
+}
+
+/* SQL Query Display */
+.sql-query {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 12px;
+    margin: 10px 0;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 13px;
+    line-height: 1.4;
+    overflow-x: auto;
+}
+
+/* SQL Dry Run Results */
+.sql-dry-run {
+    background-color: #e7f3ff;
+    border: 1px solid #b3d9ff;
+    border-radius: 4px;
+    padding: 16px;
+    margin: 10px 0;
+}
+
+.sql-dry-run h4 {
+    margin-top: 0;
+    color: #0066cc;
+}
+
+.sql-dry-run details {
+    margin-top: 12px;
+}
+
+.sql-dry-run summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: #0066cc;
+}
+
+.sql-dry-run pre {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 12px;
+    margin-top: 8px;
+    overflow-x: auto;
+}
+
+/* SQL Loading Indicator */
+.sql-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    color: #6c757d;
+}
+
+.sql-loading::before {
+    content: '';
+    width: 20px;
+    height: 20px;
+    border: 2px solid #dee2e6;
+    border-top: 2px solid #007bff;
+    border-radius: 50%;
+    animation: sql-spin 1s linear infinite;
+    margin-right: 10px;
+}
+
+@keyframes sql-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .sql-result table {
+        font-size: 12px;
+    }
+    
+    .sql-result th,
+    .sql-result td {
+        padding: 6px 8px;
+    }
+    
+    .sql-metadata {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+}
+
+/* Dark Theme Support */
+@media (prefers-color-scheme: dark) {
+    .sql-result {
+        border-color: #495057;
+        background-color: #212529;
+        color: #f8f9fa;
+    }
+    
+    .sql-result th {
+        background-color: #343a40;
+        color: #f8f9fa;
+        border-bottom-color: #495057;
+    }
+    
+    .sql-result tr:hover {
+        background-color: #343a40;
+    }
+    
+    .sql-metadata {
+        background-color: #343a40;
+        color: #adb5bd;
+    }
+    
+    .sql-query {
+        background-color: #343a40;
+        border-color: #495057;
+        color: #f8f9fa;
+    }
+} 

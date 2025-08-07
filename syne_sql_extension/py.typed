@@ -1,0 +1,3 @@
+# This file indicates that this package supports type hints (PEP 561)
+# It allows mypy and other type checkers to understand that this package
+# provides type information. 

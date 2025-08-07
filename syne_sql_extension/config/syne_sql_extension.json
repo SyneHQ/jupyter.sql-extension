@@ -1,0 +1,36 @@
+{
+  "jupyter_sql_extension": {
+    "_comment": "Jupyter SQL Extension - Production Configuration",
+    "_comment2": "This file is installed system-wide with the extension",
+    "_comment3": "For sensitive data, use environment variables",
+    
+    "sql_service_url": "${SQL_SERVICE_URL:-http://localhost:8080}",
+    "sql_service_api_key": "${SQL_SERVICE_API_KEY}",
+    "default_timeout": "${DEFAULT_TIMEOUT:-30}",
+    "max_retries": "${MAX_RETRIES:-3}",
+    "connection_pool_size": "${CONNECTION_POOL_SIZE:-10}",
+    "query_timeout": "${QUERY_TIMEOUT:-300}",
+    "max_query_length": "${MAX_QUERY_LENGTH:-10000}",
+    
+    "allow_write_operations": "${ALLOW_WRITE_OPERATIONS:-false}",
+    "allow_non_select_queries": "${ALLOW_NON_SELECT_QUERIES:-false}",
+    "enable_sql_validation": "${ENABLE_SQL_VALIDATION:-true}",
+    "enable_input_sanitization": "${ENABLE_INPUT_SANITIZATION:-true}",
+    
+    "default_output_format": "${DEFAULT_OUTPUT_FORMAT:-table}",
+    "max_display_rows": "${MAX_DISPLAY_ROWS:-1000}",
+    "enable_rich_output": "${ENABLE_RICH_OUTPUT:-true}",
+    
+    "enable_logging": "${ENABLE_LOGGING:-true}",
+    "log_level": "${LOG_LEVEL:-INFO}",
+    "log_file": "${LOG_FILE}",
+    
+    "enable_caching": "${ENABLE_CACHING:-true}",
+    "cache_ttl": "${CACHE_TTL:-300}",
+    "max_cache_size": "${MAX_CACHE_SIZE:-1000}",
+    
+    "enable_metrics": "${ENABLE_METRICS:-true}",
+    "enable_profiling": "${ENABLE_PROFILING:-false}",
+    "max_concurrent_queries": "${MAX_CONCURRENT_QUERIES:-10}"
+  }
+} 
