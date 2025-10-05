@@ -241,38 +241,7 @@ class SQLServiceClient:
                 ) as response:
                     # Check for successful status codes
                     if response.status == 200:
-                        # Get content type to handle response appropriately
-                        content_type = response.headers.get('content-type', '').lower()
-                        
-                        if verbose:
-                            print(f"Response content type: {content_type}")
-
-                        if content_type == 'application/json':
-                            return await response.json()
-                        
-                        # Always try to get text first
-                        text_content = await response.text()
-                        
-                        # If the response looks like JSON (starts with { or [), try to parse it
-                        if text_content.strip().startswith(('{', '[')):
-                            try:
-                                parsed_json = json.loads(text_content)
-                                
-                                # Check if this is a direct connection object (has id, name, host, etc.)
-                                if isinstance(parsed_json, dict) and 'id' in parsed_json and 'host' in parsed_json:
-                                    # Wrap the connection object in a standard data envelope
-                                    return {"data": parsed_json, "status": "success"}
-                                else:
-                                    # Return as-is if it's already in expected format
-                                    return parsed_json
-                                    
-                            except json.JSONDecodeError as e:
-                                logger.warning(f"Failed to parse JSON response: {e}")
-                                # Fallback to text response
-                                return {"data": text_content, "status": "success"}
-                        
-                        # For non-JSON responses, wrap in standard format
-                        return {"data": text_content, "status": "success"}
+                        return await response.json()
                     
                     elif response.status == 401:
                         logging.debug(f"Authentication error: {response.status}")
@@ -347,7 +316,8 @@ class SQLServiceClient:
             # Prepare request data
             request_data = {
                 "id": connection_id,
-                "query": query
+                "query": query,
+                "transaction": True
             }
 
             request_data.update(kwargs)
