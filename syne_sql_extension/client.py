@@ -202,6 +202,7 @@ class SQLServiceClient:
         self,
         method: str,
         endpoint: str,
+        verbose: bool = False,
         data: Optional[Dict[str, Any]] = None,
         params: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None
@@ -226,7 +227,8 @@ class SQLServiceClient:
         session = await self._get_session()
         url = f"{self.base_url}{endpoint}"
         
-        logger.debug(f"Making request to {url} with method {method} and data {data}")
+        if verbose:
+            print(f"Making request to {url} with method {method} and data {data}")
         
         for attempt in range(self.max_retries + 1):
             try:
@@ -316,6 +318,7 @@ class SQLServiceClient:
         self,
         connection_id: str,
         query: str,
+        verbose: bool = False,
         timeout: Optional[int] = None,
         explain: bool = False,
         api_key: str = None,
@@ -351,7 +354,8 @@ class SQLServiceClient:
                 method="POST",
                 endpoint="/magic.query",
                 data=request_data,
-                headers={"X-Api-Key": api_key}
+                headers={"X-Api-Key": api_key},
+                verbose=verbose
             )
             
             # Parse response - API returns QueryResponse format

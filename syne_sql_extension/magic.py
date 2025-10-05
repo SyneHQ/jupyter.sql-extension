@@ -617,7 +617,8 @@ class SQLConnectMagic(Magics):
                 timeout=timeout,
                 explain=explain,
                 api_key=api_key,
-                connection=connection
+                connection=connection,
+                verbose=verbose
             )
 
             if verbose:
