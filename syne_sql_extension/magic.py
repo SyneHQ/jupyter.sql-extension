@@ -377,6 +377,13 @@ class SQLConnectMagic(Magics):
             database = args.database
             schema = args.schema
 
+            kwargs = {}
+
+            if database:
+                kwargs["database"] = database
+            if schema:
+                kwargs["schema"] = schema
+
             # Execute the query
             result = await self._execute_query(
                 connection_id=connection_id,
@@ -386,10 +393,7 @@ class SQLConnectMagic(Magics):
                 explain=args.explain,
                 verbose=args.verbose,
                 api_key=api_key,
-                connection={
-                    "database": database,
-                    "schema": schema
-                }
+                connection=kwargs
             )
 
             # Record performance metrics
