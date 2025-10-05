@@ -12,7 +12,6 @@ from typing import Dict, Any, Optional, List, Union
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
-import httpx
 import aiohttp
 from pydantic import BaseModel, Field, validator
 
@@ -168,7 +167,7 @@ class SQLServiceClient:
         self._session = session
         self._headers = self._build_headers()
         
-        logger.info(f"SQLServiceClient initialized for {base_url}")
+        logger.info("SQLServiceClient initialized for %s", base_url)
     
     def _build_headers(self) -> Dict[str, str]:
         """Build request headers with authentication."""
@@ -187,9 +186,15 @@ class SQLServiceClient:
         """Get or create aiohttp session."""
         if self._session is None or self._session.closed:
             timeout = aiohttp.ClientTimeout(total=self.timeout)
+            # Don't set session-level headers to avoid Content-Type conflicts
+            # Headers will be set per-request instead
+            # Use custom connector to handle duplicate headers gracefully
+            connector = aiohttp.TCPConnector()
             self._session = aiohttp.ClientSession(
                 timeout=timeout,
-                headers=self._headers
+                connector=connector,
+                # Enable response compression
+                auto_decompress=True
             )
         return self._session
     
@@ -227,6 +232,11 @@ class SQLServiceClient:
         session = await self._get_session()
         url = f"{self.base_url}{endpoint}"
         
+        # Merge default headers with request-specific headers
+        request_headers = self._headers.copy()
+        if headers:
+            request_headers.update(headers)
+        
         if verbose:
             print(f"Making request to {url} with method {method} and data {data}")
         
@@ -237,12 +247,56 @@ class SQLServiceClient:
                     url=url,
                     json=data,
                     params=params,
-                    headers=headers
+                    headers=request_headers,
                 ) as response:
+                    # Debug logging for response headers
+                    if verbose:
+                        content_type = response.headers.get('content-type', 'unknown')
+                        logger.debug("Response status: %s, Content-Type: %s", response.status, content_type)
+                        logger.debug("Response headers: %s", dict(response.headers))
+                        # Check for duplicate or conflicting Content-Type headers (common server issue)
+                        content_type_headers = response.headers.getall('content-type', [])
+                        if len(content_type_headers) > 1:
+                            logger.warning("Server sent multiple Content-Type headers: %s", content_type_headers)
+                            # Check if we have conflicting headers (e.g., text/plain + application/json)
+                            has_json = any('application/json' in ct.lower() for ct in content_type_headers)
+                            has_plain = any('text/plain' in ct.lower() for ct in content_type_headers)
+                            if has_json and has_plain:
+                                logger.warning("Server sent conflicting Content-Type headers - will attempt JSON parsing anyway")
+                    
                     # Check for successful status codes
                     if response.status == 200:
-                        return await response.json()
-                    
+                        # Check if we have conflicting headers that indicate JSON despite aiohttp's interpretation
+                        content_type_headers = response.headers.getall('content-type', [])
+                        should_force_json = False
+                        
+                        if len(content_type_headers) > 1:
+                            has_json = any('application/json' in ct.lower() for ct in content_type_headers)
+                            has_plain = any('text/plain' in ct.lower() for ct in content_type_headers)
+                            if has_json and has_plain:
+                                should_force_json = True
+                                logger.debug("Detected conflicting Content-Type headers, forcing JSON parsing")
+                        
+                        # Try aiohttp's built-in JSON parsing first
+                        if not should_force_json:
+                            try:
+                                return await response.json()
+                            except aiohttp.ContentTypeError:
+                                should_force_json = True
+                                logger.debug("aiohttp Content-Type validation failed, falling back to manual JSON parsing")
+                        
+                        # Force JSON parsing (either due to conflicting headers or aiohttp failure)
+                        if should_force_json:
+                            response_text = await response.text()
+                            try:
+                                parsed_json = json.loads(response_text)
+                                logger.debug("Successfully parsed JSON response manually")
+                                return parsed_json
+                            except json.JSONDecodeError as json_err:
+                                content_type = response.headers.get('content-type', 'unknown')
+                                logger.error("Failed to parse JSON response. Content-Type: %s, Error: %s", content_type, json_err)
+                                logger.error("Response text (first 500 chars): %s", response_text[:500])
+                                raise QueryExecutionError(f"Server returned invalid JSON response. Content-Type: {content_type}")
                     elif response.status == 401:
                         logging.debug(f"Authentication error: {response.status}")
                         raise AuthenticationError("Invalid API key or authentication failed")
@@ -323,11 +377,15 @@ class SQLServiceClient:
             request_data.update(kwargs)
             
             # Execute query
+            headers = {}
+            if api_key:
+                headers["X-Api-Key"] = api_key
+            
             response = await self._make_request(
                 method="POST",
                 endpoint="/magic.query",
                 data=request_data,
-                headers={"X-Api-Key": api_key},
+                headers=headers,
                 verbose=verbose
             )
             
