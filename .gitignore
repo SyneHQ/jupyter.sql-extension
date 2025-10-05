@@ -7,3 +7,6 @@ __pycache__/
 *.pywz
 *.pyzw
 *.pyzwz
+
+.venv
+*.egg-info

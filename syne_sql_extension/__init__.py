@@ -18,8 +18,8 @@ import warnings
 
 # Package metadata
 __version__ = "1.0.0"
-__author__ = "Diagonal Team"
-__email__ = "dev@diagonal.com"
+__author__ = "SyneHQ Team"
+__email__ = "dev@synehq.com"
 __license__ = "MIT"
 __description__ = "Enterprise-grade Jupyter extension for secure SQL query execution"
 
