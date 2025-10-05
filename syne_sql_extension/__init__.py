@@ -17,7 +17,7 @@ import sys
 import warnings
 
 # Package metadata
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 __author__ = "SyneHQ Team"
 __email__ = "dev@synehq.com"
 __license__ = "MIT"
