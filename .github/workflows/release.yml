@@ -28,7 +28,7 @@ jobs:
 
     - name: Increment version
       run: |
-        uv pip install --upgrade semver
+        uv pip install --upgrade semver --system
         echo "VERSION=${VERSION}" >> $GITHUB_ENV
         NEW_VERSION=$(semver --increment ${VERSION})
         echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
