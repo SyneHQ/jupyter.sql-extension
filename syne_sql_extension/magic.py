@@ -423,7 +423,7 @@ class SQLConnectMagic(Magics):
             if args.verbose:
                 print(f"📊 Query returned {len(df)} rows with {len(df.columns)} columns")
                 if result.metadata:
-                    execution_time = result.metadata.get('execution_time', 'unknown')
+                    execution_time = getattr(result.metadata, 'execution_time', 'unknown')
                     print(f"📊 Execution time: {execution_time}")
             
             return df
@@ -625,7 +625,7 @@ class SQLConnectMagic(Magics):
                 rows = len(result.data) if result.data else 0
                 print(f"📊 Query returned {rows} rows")
                 if result.metadata:
-                    print(f"📊 Execution time: {result.metadata.get('execution_time', 'unknown')}")
+                    print(f"📊 Execution time: {getattr(result.metadata, 'execution_time', 'unknown')}")
 
             return result
 
@@ -711,7 +711,7 @@ class SQLConnectMagic(Magics):
         # Add metadata
         metadata_html = ""
         if result.metadata:
-            execution_time = result.metadata.get('execution_time', 'unknown')
+            execution_time = getattr(result.metadata, 'execution_time', 'unknown')
             metadata_html = f"""
             <div class="sql-metadata" style="margin-top: 10px; color: #666; font-size: 0.9em;">
                 <strong>Rows:</strong> {len(result.data)} |

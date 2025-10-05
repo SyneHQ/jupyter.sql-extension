@@ -243,6 +243,9 @@ class SQLServiceClient:
                     if response.status == 200:
                         # Get content type to handle response appropriately
                         content_type = response.headers.get('content-type', '').lower()
+                        
+                        if verbose:
+                            print(f"Response content type: {content_type}")
 
                         if content_type == 'application/json':
                             return await response.json()
@@ -366,6 +369,9 @@ class SQLServiceClient:
             results = response.get("results", [])
             elapsed = response.get("elapsed", 0.0)
             row_count = response.get("rowCount", 0)
+            
+            if verbose:
+                print(response)
             
             # Convert results to rows and columns format
             if results and row_count > 0:
