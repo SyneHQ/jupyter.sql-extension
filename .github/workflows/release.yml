@@ -48,15 +48,15 @@ jobs:
           echo "BUILD=false" >> $GITHUB_ENV
         fi
 
-    - name: Push changes
-      run: git push
-
     - name: Update version in __init__.py
       run: |
         sed -i "s/__version__ = \"${VERSION}\"/__version__ = \"${NEW_VERSION}\"/" syne_sql_extension/__init__.py
 
     - name: Commit changes
       run: git config user.name "SyneHQ" && git config user.email "engineering@synehq.com" && git add . && git commit -m "Bump version to ${NEW_VERSION}"
+
+    - name: Push changes
+      run: git push
 
     - name: Build package
       run: |
