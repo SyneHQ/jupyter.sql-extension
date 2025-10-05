@@ -32,9 +32,10 @@ jobs:
     - name: Increment version
       run: |
         uv venv
+        source .venv/bin/activate
         uv pip install --upgrade semver
         echo "VERSION=${VERSION}" >> $GITHUB_ENV
-        NEW_VERSION=$(uv run semver --increment ${VERSION})
+        NEW_VERSION=$(python -c "import semver; print(semver.bump_patch('${VERSION}'))")
         echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
 
     - name: Update version in __init__.py
