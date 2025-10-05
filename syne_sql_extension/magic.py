@@ -569,9 +569,22 @@ class SQLConnectMagic(Magics):
             raise ValidationError(f"Query too long: {len(query)} characters (max: {self._config.max_query_length})")
 
         # Basic SQL syntax validation
-        if not re.search(r'\bSELECT\b', query_upper):
+        # Check for read-only queries (SELECT, USE, and other safe operations)
+        read_only_patterns = [
+            r'\bSELECT\b',
+            r'\bUSE\b',
+            r'\bSHOW\b',
+            r'\bDESCRIBE\b',
+            r'\bDESC\b',
+            r'\bEXPLAIN\b',
+            r'\bWITH\b.*\bSELECT\b'
+        ]
+        
+        is_read_only = any(re.search(pattern, query_upper) for pattern in read_only_patterns)
+        
+        if not is_read_only:
             if not self._config.allow_non_select_queries:
-                raise ValidationError("Only SELECT queries are allowed")
+                raise ValidationError("Only SELECT, USE, and other read-only queries are allowed")
 
     @measure_performance
     async def _execute_query(
