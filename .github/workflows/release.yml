@@ -31,12 +31,25 @@ jobs:
 
     - name: Increment version
       run: |
-        uv venv
+        uv venv --python 3.12
         source .venv/bin/activate
         uv pip install --upgrade semver
         echo "VERSION=${VERSION}" >> $GITHUB_ENV
         NEW_VERSION=$(python -c "import semver; print(semver.bump_patch('${VERSION}'))")
         echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
+    
+    - name: Need to build package
+      # only if cahnges are in .py files
+      run: |
+        if git diff --name-only --diff-filter=d | grep -qE '\.py$'; then
+          echo "BUILD=true" >> $GITHUB_ENV
+        else
+          echo "No Python files changed, skipping build"
+          echo "BUILD=false" >> $GITHUB_ENV
+        fi
+
+    - name: Push changes
+      run: git push
 
     - name: Update version in __init__.py
       run: |
@@ -44,12 +57,17 @@ jobs:
 
     - name: Commit changes
       run: git config user.name "SyneHQ" && git config user.email "engineering@synehq.com" && git add . && git commit -m "Bump version to ${NEW_VERSION}"
-    
+
     - name: Build package
-      run: uv build
-    
+      run: |
+        if [ "$BUILD" = "true" ]; then
+          uv build
+        fi
+
     - name: Publish to PyPI
       env:
         UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
       run: |
-        uv publish
+        if [ "$BUILD" = "true" ]; then
+          uv publish
+        fi
