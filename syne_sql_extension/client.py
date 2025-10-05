@@ -226,6 +226,8 @@ class SQLServiceClient:
         session = await self._get_session()
         url = f"{self.base_url}{endpoint}"
         
+        logger.debug(f"Making request to {url} with method {method} and data {data}")
+        
         for attempt in range(self.max_retries + 1):
             try:
                 async with session.request(
@@ -268,10 +270,13 @@ class SQLServiceClient:
                         return {"data": text_content, "status": "success"}
                     
                     elif response.status == 401:
+                        logging.debug(f"Authentication error: {response.status}")
                         raise AuthenticationError("Invalid API key or authentication failed")
                     elif response.status == 403:
+                        logging.debug(f"Insufficient permissions: {response.status}")
                         raise AuthenticationError("Insufficient permissions")
                     elif response.status == 404:
+                        logging.debug(f"Endpoint not found: {endpoint}")
                         raise ConnectionError(f"Endpoint not found: {endpoint}")
                     elif response.status == 500:
                         try:

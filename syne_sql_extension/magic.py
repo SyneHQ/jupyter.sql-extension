@@ -357,10 +357,11 @@ class SQLConnectMagic(Magics):
             if not validate_connection_id(connection_id):
                 raise ValidationError(f"Invalid connection ID: {connection_id}")
 
-            api_key = args.api_key.strip()
+            api_key = args.api_key
 
             if not api_key:
                 raise ValidationError("API key is required")
+
 
             # Get local namespace for variable substitution
             local_ns = self.shell.user_ns if self.shell else {}
@@ -392,7 +393,7 @@ class SQLConnectMagic(Magics):
                 timeout=args.timeout or self._config.query_timeout,
                 explain=args.explain,
                 verbose=args.verbose,
-                api_key=api_key,
+                api_key=api_key.strip(),
                 connection=kwargs
             )
 
@@ -403,8 +404,7 @@ class SQLConnectMagic(Magics):
                 query=sql_query,
                 execution_time=execution_time,
                 row_count=len(result.data) if result.data else 0,
-                success=True,
-                api_key=api_key
+                success=True
             )
 
             if args.verbose:
