@@ -59,10 +59,6 @@ from .types import QueryResult, OutputFormat, QueryMetadata
 # Set up module logger
 logger = logging.getLogger(__name__)
 
-
-
-
-
 def async_cell_magic(func):
     """
     Decorator to enable async/await in cell magics.
@@ -225,7 +221,24 @@ class SQLConnectMagic(Magics):
         type=str,
         help='Database connection identifier, "direct" for default connection, or "config:..." for custom config'
     )
-
+    @argument(
+        '--api-key', '-k',
+        type=str,
+        default=None,
+        help='API key for the SQL service'
+    )
+    @argument(
+        '--database', '-d',
+        type=str,
+        default=None,
+        help='Database configuration'
+    )
+    @argument(
+        '--schema', '-s',
+        type=str,
+        default=None,
+        help='Schema configuration'
+    )
     @argument(
         '--limit', '-l',
         type=int,
@@ -286,7 +299,6 @@ class SQLConnectMagic(Magics):
             except ImportError:
                 # nest_asyncio not available, check if we're in an event loop
                 try:
-                    loop = asyncio.get_running_loop()
                     # We're in a running loop - use thread executor to avoid conflicts
                     import concurrent.futures
                     
@@ -345,6 +357,11 @@ class SQLConnectMagic(Magics):
             if not validate_connection_id(connection_id):
                 raise ValidationError(f"Invalid connection ID: {connection_id}")
 
+            api_key = args.api_key.strip()
+
+            if not api_key:
+                raise ValidationError("API key is required")
+
             # Get local namespace for variable substitution
             local_ns = self.shell.user_ns if self.shell else {}
 
@@ -355,22 +372,24 @@ class SQLConnectMagic(Magics):
             if args.dry_run:
                 self._display_dry_run_result(connection_id, sql_query)
                 return None
-            
-            # Get connection configuration
-            connection_config = await self._get_connection_config(
-                connection_id,
-                use_cache=not args.no_cache,
-                verbose=args.verbose
-            )
+
+
+            database = args.database
+            schema = args.schema
 
             # Execute the query
             result = await self._execute_query(
-                connection_config=connection_config,
+                connection_id=connection_id,
                 query=sql_query,
                 limit=args.limit,
                 timeout=args.timeout or self._config.query_timeout,
                 explain=args.explain,
-                verbose=args.verbose
+                verbose=args.verbose,
+                api_key=api_key,
+                connection={
+                    "database": database,
+                    "schema": schema
+                }
             )
 
             # Record performance metrics
@@ -380,7 +399,8 @@ class SQLConnectMagic(Magics):
                 query=sql_query,
                 execution_time=execution_time,
                 row_count=len(result.data) if result.data else 0,
-                success=True
+                success=True,
+                api_key=api_key
             )
 
             if args.verbose:
@@ -549,51 +569,17 @@ class SQLConnectMagic(Magics):
             if not self._config.allow_non_select_queries:
                 raise ValidationError("Only SELECT queries are allowed")
 
-    async def _get_connection_config(self, connection_id: str, use_cache: bool = True, verbose: bool = False) -> ConnectionConfig:
-        """
-        Retrieve connection configuration securely.
-
-        Args:
-            connection_id: Database connection identifier
-            use_cache: Whether to use cached configurations
-            verbose: Enable verbose output
-
-        Returns:
-            Connection configuration
-
-        Raises:
-            ConnectionError: If connection config retrieval fails
-        """
-        if use_cache and connection_id in self._connection_cache:
-            if verbose:
-                print(f"📋 Using cached connection config for '{connection_id}'")
-            return self._connection_cache[connection_id]
-
-        if verbose:
-            print(f"🔗 Retrieving connection config for '{connection_id}'")
-
-        try:
-            connection_config = await self.sql_client.get_connection_config(connection_id)
-
-            if use_cache:
-                self._connection_cache[connection_id] = connection_config
-                if verbose:
-                    print(f"📋 Cached connection config for '{connection_id}'")
-
-            return connection_config
-
-        except Exception as e:
-            raise ConnectionError(f"Failed to retrieve connection configuration: {e}")
-
     @measure_performance
     async def _execute_query(
         self,
-        connection_config: ConnectionConfig,
+        connection_id: str,
         query: str,
         limit: Optional[int] = None,
         timeout: int = 30,
         explain: bool = False,
-        verbose: bool = False
+        verbose: bool = False,
+        api_key: str = None,
+        connection: Optional[Dict[str, Any]] = None
     ) -> QueryResult:
         """
         Execute SQL query against the database.
@@ -605,7 +591,7 @@ class SQLConnectMagic(Magics):
             timeout: Query timeout in seconds
             explain: Whether to return execution plan
             verbose: Enable verbose output
-
+            api_key: API key for the SQL service
         Returns:
             Query execution result
 
@@ -622,10 +608,12 @@ class SQLConnectMagic(Magics):
 
             # Execute the query
             result = await self.sql_client.execute_query(
-                connection_config=connection_config,
+                connection_id=connection_id,
                 query=query,
                 timeout=timeout,
-                explain=explain
+                explain=explain,
+                api_key=api_key,
+                connection=connection
             )
 
             if verbose:

@@ -179,7 +179,7 @@ class SQLServiceClient:
         }
         
         if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
+            headers["X-Api-Key"] = self.api_key
         
         return headers
     
@@ -203,7 +203,8 @@ class SQLServiceClient:
         method: str,
         endpoint: str,
         data: Optional[Dict[str, Any]] = None,
-        params: Optional[Dict[str, Any]] = None
+        params: Optional[Dict[str, Any]] = None,
+        headers: Optional[Dict[str, str]] = None
     ) -> Dict[str, Any]:
         """
         Make HTTP request to the SQL service.
@@ -231,7 +232,8 @@ class SQLServiceClient:
                     method=method,
                     url=url,
                     json=data,
-                    params=params
+                    params=params,
+                    headers=headers
                 ) as response:
                     # Check for successful status codes
                     if response.status == 200:
@@ -305,68 +307,14 @@ class SQLServiceClient:
                 logger.warning(f"Request attempt {attempt + 1} timed out")
                 await asyncio.sleep(2 ** attempt)
     
-    async def get_connection_config(self, connection_id: str) -> ConnectionConfig:
-        """
-        Retrieve connection configuration for a given connection ID.
-        
-        Args:
-            connection_id: Database connection identifier
-            
-        Returns:
-            Connection configuration
-            
-        Raises:
-            ConnectionError: If connection config retrieval fails
-            AuthenticationError: If authentication fails
-        """
-        try:
-            response = await self._make_request(
-                method="GET",
-                endpoint=f"/connections/{connection_id}"
-            )
-            
-            # Extract connection data from response
-            config_data = response.get("data", {})
-            
-            # Handle case where data might be a string that needs parsing
-            if isinstance(config_data, str):
-                try:
-                    config_data = json.loads(config_data)
-                except json.JSONDecodeError:
-                    raise ConnectionError(f"Invalid connection configuration response: could not parse data")
-            
-            # Map the response fields to our expected format
-            return ConnectionConfig(
-                connection_id=config_data.get("id", config_data.get("connection_id", connection_id)),
-                host=config_data["host"],
-                port=config_data["port"] if config_data["port"] != 8123 else 9000,
-                database=config_data["database"],
-                username=config_data["username"],
-                password=config_data["password"],
-                type=config_data.get("type", "clickhouse").lower(),
-                ssl_mode="require" if config_data.get("ssl", False) else "disable",
-                connection_timeout=config_data.get("connection_timeout", 30),
-                query_timeout=config_data.get("query_timeout", 300),
-                max_connections=config_data.get("max_connections", 100),
-                min_connections=config_data.get("min_connections", 1),
-                additional_params=config_data.get("extra_params", {}),
-                created_at=datetime.fromisoformat(config_data.get("created_at", datetime.now().isoformat())),
-                updated_at=datetime.fromisoformat(config_data.get("updated_at", datetime.now().isoformat()))
-            )
-            
-        except KeyError as e:
-            raise ConnectionError(f"Invalid connection configuration response: missing field {e}")
-        except Exception as e:
-            if isinstance(e, (ConnectionError, AuthenticationError)):
-                raise
-            raise ConnectionError(f"Failed to retrieve connection configuration: {e}")
-    
     async def execute_query(
         self,
-        connection_config: ConnectionConfig,
+        connection_id: str,
         query: str,
         timeout: Optional[int] = None,
-        explain: bool = False
+        explain: bool = False,
+        api_key: str = None,
+        **kwargs: Any
     ) -> QueryResult:
         """
         Execute SQL query against the database.
@@ -376,7 +324,7 @@ class SQLServiceClient:
             query: SQL query to execute
             timeout: Query timeout in seconds
             explain: Whether to return execution plan
-            
+            api_key: API key for the SQL service
         Returns:
             Query execution result
             
@@ -387,15 +335,18 @@ class SQLServiceClient:
         try:
             # Prepare request data
             request_data = {
-                "connection": connection_config.to_dict(),
+                "id": connection_id,
                 "query": query
             }
+
+            request_data.update(kwargs)
             
             # Execute query
             response = await self._make_request(
                 method="POST",
-                endpoint="/metadata/query",
-                data=request_data
+                endpoint="/magic.query",
+                data=request_data,
+                headers={"X-Api-Key": api_key}
             )
             
             # Parse response - API returns QueryResponse format
@@ -423,7 +374,7 @@ class SQLServiceClient:
                 columns=columns,
                 row_count=row_count,
                 metadata=QueryMetadata(
-                    connection_id=connection_config.connection_id,
+                    connection_id=connection_id,
                     query_hash=hash(query),
                     execution_time=elapsed,
                     row_count=row_count,
@@ -459,46 +410,6 @@ class SQLServiceClient:
             
         except Exception as e:
             raise QueryExecutionError(f"Failed to validate query: {e}")
-    
-    async def get_connection_status(self, connection_id: str) -> Dict[str, Any]:
-        """
-        Get connection status and health information.
-        
-        Args:
-            connection_id: Database connection identifier
-            
-        Returns:
-            Connection status information
-        """
-        try:
-            response = await self._make_request(
-                method="GET",
-                endpoint=f"/api/connections/{connection_id}/status"
-            )
-            
-            return response.get("data", {})
-            
-        except Exception as e:
-            raise ConnectionError(f"Failed to get connection status: {e}")
-    
-    async def list_connections(self) -> List[Dict[str, Any]]:
-        """
-        List available database connections.
-        
-        Returns:
-            List of available connections
-        """
-        try:
-            response = await self._make_request(
-                method="GET",
-                endpoint="/api/connections"
-            )
-            
-            return response.get("data", [])
-            
-        except Exception as e:
-            raise ConnectionError(f"Failed to list connections: {e}")
-
 
 # Convenience function for creating client
 def create_sql_client(

@@ -5,8 +5,6 @@ Setup configuration for Jupyter SQL Extension
 A robust Jupyter Notebook extension for executing SQL queries through
 internal service connections with security and validation.
 """
-
-import os
 from pathlib import Path
 from setuptools import setup, find_packages
 
