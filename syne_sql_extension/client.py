@@ -370,9 +370,6 @@ class SQLServiceClient:
             elapsed = response.get("elapsed", 0.0)
             row_count = response.get("rowCount", 0)
             
-            if verbose:
-                print(response)
-            
             # Convert results to rows and columns format
             if results and row_count > 0:
                 # Extract column names from first result object
