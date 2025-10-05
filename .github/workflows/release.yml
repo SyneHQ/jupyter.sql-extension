@@ -19,6 +19,23 @@ jobs:
     
     - name: Set up Python
       run: uv python install 3.12
+
+    - name: Upgrade version
+    # read syne_Sql_extension/__init__.py __version__ = "1.0.0"
+      run: |
+        VERSION=$(grep "__version__ = " syne_sql_extension/__init__.py | cut -d'"' -f2)
+        echo "VERSION=${VERSION}" >> $GITHUB_ENV
+
+    - name: Increment version
+      run: |
+        uv pip install --upgrade semver
+        echo "VERSION=${VERSION}" >> $GITHUB_ENV
+        NEW_VERSION=$(semver --increment ${VERSION})
+        echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
+
+    - name: Update version in __init__.py
+      run: |
+        sed -i "s/__version__ = \"${VERSION}\"/__version__ = \"${NEW_VERSION}\"/" syne_sql_extension/__init__.py
     
     - name: Build package
       run: uv build
