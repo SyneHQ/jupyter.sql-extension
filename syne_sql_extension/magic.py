@@ -24,6 +24,7 @@ import asyncio
 import logging
 import os
 import re
+from tabnanny import verbose
 import time
 from typing import Dict, Any, Optional, Tuple, List
 from functools import wraps
@@ -426,12 +427,15 @@ class SQLConnectMagic(Magics):
 
             # Validate and sanitize SQL query, detect variable assignment
             sql_query, assignment_variable = self._prepare_query(cell, local_ns, args.verbose)
+            
+            if verbose:
+                print(f"SQL Query: {sql_query}")
+                print(f"Assignment Variable: {assignment_variable}")
 
             # Dry run mode - just validate the query
             if args.dry_run:
                 self._display_dry_run_result(connection_id, sql_query)
                 return None
-
 
             database = args.database
             schema = args.schema
@@ -558,7 +562,7 @@ class SQLConnectMagic(Magics):
             raise ValidationError("SQL query cannot be empty")
 
         # Check for variable assignment syntax: variable_name << SQL_QUERY
-        assignment_match = re.match(r'^([a-zA-Z_][a-zA-Z0-9_]*)\s*<<\s*(.+)$', cell.strip(), re.DOTALL)
+        assignment_match = re.match(r'^([a-zA-Z_][a-zA-Z0-9_]*)\s*>>\s*(.+)$', cell.strip(), re.DOTALL)
         variable_name = None
         
         if assignment_match:

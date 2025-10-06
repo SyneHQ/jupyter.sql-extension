@@ -128,7 +128,7 @@ def validate_sql_syntax(query: str) -> bool:
         has_keyword = any(
             token.ttype == Keyword and token.value.upper() in [
                 'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'CREATE', 'DROP', 'ALTER', 
-                'WITH', 'EXPLAIN', 'ANALYZE', 'DESC', 'SHOW', 'DESCRIBE'
+                'WITH', 'EXPLAIN', 'ANALYZE', 'DESC', 'SHOW', 'DESCRIBE', 'USE'
             ]
             for token in tokens
         )
@@ -162,7 +162,7 @@ def detect_query_type(query: str) -> str:
         for token in tokens:
             if token.ttype == Keyword:
                 keyword = token.value.upper()
-                if keyword in ['SELECT', 'WITH', 'EXPLAIN', 'ANALYZE', 'DESC', 'SHOW', 'DESCRIBE']:
+                if keyword in ['SELECT', 'WITH', 'EXPLAIN', 'ANALYZE', 'DESC', 'SHOW', 'DESCRIBE', 'USE']:
                     return 'select'
                 elif keyword in ['INSERT', 'UPDATE', 'DELETE', 'CREATE', 'DROP', 'ALTER']:
                     return 'insert'
