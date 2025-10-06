@@ -123,12 +123,17 @@ class SQLConnectMagic(Magics):
     2. Executes SQL queries against the configured database
     3. Returns rich formatted results (DataFrames, HTML tables, JSON)
     4. Handles errors gracefully with detailed feedback
+    5. Supports variable assignment using 'variable_name <<' syntax
 
     Example usage:
-        %%sqlconnect my_db_connection
+        %%sqlconnect my_db_connection --api-key my_key
         SELECT * FROM users
         WHERE created_at >= '2024-01-01'
         LIMIT 10
+
+    Variable assignment example:
+        %%sqlconnect my_db_connection --api-key my_key
+        result_df << SELECT * FROM users LIMIT 10
     """
 
     def __init__(self, shell=None):
@@ -281,10 +286,17 @@ class SQLConnectMagic(Magics):
         3. Retrieves connection configuration securely
         4. Executes the query against the database
         5. Returns a pandas DataFrame with the results
+        6. Optionally assigns results to a variable using 'variable_name <<' syntax
+
+        Variable Assignment Syntax:
+            Use 'variable_name << SQL_QUERY' to assign the result DataFrame to a variable.
+            Example:
+                %%sqlconnect my_connection --api-key my_key
+                result_df << SELECT * FROM users LIMIT 10
 
         Args:
             line: Magic command line with arguments
-            cell: SQL query content
+            cell: SQL query content or variable assignment syntax
 
         Returns:
             Pandas DataFrame with query results or None on error
@@ -366,8 +378,8 @@ class SQLConnectMagic(Magics):
             # Get local namespace for variable substitution
             local_ns = self.shell.user_ns if self.shell else {}
 
-            # Validate and sanitize SQL query
-            sql_query = self._prepare_query(cell, local_ns, args.verbose)
+            # Validate and sanitize SQL query, detect variable assignment
+            sql_query, assignment_variable = self._prepare_query(cell, local_ns, args.verbose)
 
             # Dry run mode - just validate the query
             if args.dry_run:
@@ -410,14 +422,34 @@ class SQLConnectMagic(Magics):
             if args.verbose:
                 print(f"✅ Query executed successfully in {execution_time:.2f}s")
 
-            # Return DataFrame
+            # Handle empty results
             if not result.data:
                 if args.verbose:
                     print("📊 Query returned no results")
-                return pd.DataFrame()  # Empty DataFrame
+                df = pd.DataFrame()  # Empty DataFrame
+                
+                # Handle variable assignment for empty results
+                if assignment_variable:
+                    if self.shell and hasattr(self.shell, 'user_ns'):
+                        self.shell.user_ns[assignment_variable] = df
+                        if args.verbose:
+                            print(f"💾 Assigned empty result to variable: {assignment_variable}")
+                    else:
+                        logger.warning(f"Could not assign to variable {assignment_variable}: no shell namespace available")
+                
+                return df
             
             # Create DataFrame from result
             df = pd.DataFrame(result.data, columns=result.columns)
+            
+            # Handle variable assignment if specified
+            if assignment_variable:
+                if self.shell and hasattr(self.shell, 'user_ns'):
+                    self.shell.user_ns[assignment_variable] = df
+                    if args.verbose:
+                        print(f"💾 Assigned result to variable: {assignment_variable}")
+                else:
+                    logger.warning(f"Could not assign to variable {assignment_variable}: no shell namespace available")
             
             # Display metadata if verbose
             if args.verbose:
@@ -461,7 +493,7 @@ class SQLConnectMagic(Magics):
 
         return None
 
-    def _prepare_query(self, cell: str, local_ns: Optional[Dict[str, Any]], verbose: bool = False) -> str:
+    def _prepare_query(self, cell: str, local_ns: Optional[Dict[str, Any]], verbose: bool = False) -> Tuple[str, Optional[str]]:
         """
         Prepare and validate the SQL query.
 
@@ -471,7 +503,7 @@ class SQLConnectMagic(Magics):
             verbose: Enable verbose output
 
         Returns:
-            Sanitized and validated SQL query
+            Tuple of (sanitized and validated SQL query, optional variable name for assignment)
 
         Raises:
             ValidationError: If query validation fails
@@ -479,8 +511,21 @@ class SQLConnectMagic(Magics):
         if not cell or not cell.strip():
             raise ValidationError("SQL query cannot be empty")
 
+        # Check for variable assignment syntax: variable_name << SQL_QUERY
+        assignment_match = re.match(r'^([a-zA-Z_][a-zA-Z0-9_]*)\s*<<\s*(.+)$', cell.strip(), re.DOTALL)
+        variable_name = None
+        
+        if assignment_match:
+            variable_name = assignment_match.group(1)
+            query_content = assignment_match.group(2).strip()
+            
+            if verbose:
+                print(f"🔄 Detected variable assignment: {variable_name} << ...")
+        else:
+            query_content = cell
+
         # Basic SQL injection prevention
-        query = sanitize_query(cell)
+        query = sanitize_query(query_content)
 
         if verbose:
             print(f"📝 Original query length: {len(cell)} characters")
@@ -493,7 +538,7 @@ class SQLConnectMagic(Magics):
         # Additional validation
         self._validate_query_safety(query)
 
-        return query
+        return query, variable_name
 
     def _substitute_variables(self, query: str, local_ns: Dict[str, Any], verbose: bool = False) -> str:
         """
