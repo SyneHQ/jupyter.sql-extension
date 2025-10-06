@@ -14,13 +14,13 @@ user_name = "John Doe"
 is_active = True
 
 # Use in SQL queries
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection --api-key my_key
 SELECT * FROM users WHERE id = {user_id}
 
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection --api-key my_key
 SELECT * FROM users WHERE name = {user_name}
 
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection --api-key my_key
 SELECT * FROM users WHERE active = {is_active}
 ```
 
@@ -41,16 +41,16 @@ user_names = ["Alice", "Bob", "Charlie"]
 created_date = datetime(2024, 1, 1)
 price = 99.99
 
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection --api-key my_key
 SELECT * FROM users WHERE id IN {user_ids:list}
 
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection --api-key my_key
 SELECT * FROM users WHERE name IN {user_names:list}
 
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection --api-key my_key
 SELECT * FROM users WHERE created_at >= {created_date:date}
 
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection --api-key my_key
 SELECT * FROM products WHERE price = {price:number}
 ```
 
@@ -63,27 +63,27 @@ base_price = 100
 discount_rate = 0.1
 tax_rate = 0.08
 
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection --api-key my_key
 SELECT * FROM products WHERE final_price = {base_price * (1 - discount_rate) * (1 + tax_rate)}
 
 # String operations
 first_name = "John"
 last_name = "Doe"
 
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection --api-key my_key
 SELECT * FROM users WHERE full_name = {first_name + " " + last_name}
 
 # List operations
 items = [1, 2, 3, 4, 5]
 
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection --api-key my_key
 SELECT * FROM orders WHERE item_count = {len(items)}
 
 # Range generation
 min_age = 18
 max_age = 65
 
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection --api-key my_key
 SELECT * FROM users WHERE age IN {list(range(min_age, max_age + 1, 10))}
 ```
 
@@ -94,23 +94,23 @@ Use function calls and complex expressions within `{...}` blocks.
 from datetime import datetime, timedelta
 
 # Date calculations
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection --api-key my_key
 SELECT * FROM users WHERE created_at >= {datetime.now() - timedelta(days=30)}
 
 # Mathematical functions
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection --api-key my_key
 SELECT * FROM products WHERE rounded_price = {round(99.99 * 1.15, 2)}
 
 # Conditional expressions
 user_count = 5
 
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection --api-key my_key
 SELECT * FROM users WHERE status = {("active" if user_count > 0 else "inactive")}
 
 # List comprehensions
 numbers = [1, 2, 3, 4, 5]
 
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection --api-key my_key
 SELECT * FROM products WHERE id IN {[x * 2 for x in numbers]}
 ```
 
@@ -132,7 +132,7 @@ Strings with special characters are automatically escaped:
 ```python
 description = "It's a great product!"
 
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection --api-key my_key
 SELECT * FROM products WHERE description = {description}
 # Results in: SELECT * FROM products WHERE description = 'It''s a great product!'
 ```
@@ -144,11 +144,11 @@ Empty lists and None values are handled appropriately:
 empty_list = []
 none_value = None
 
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection --api-key my_key
 SELECT * FROM users WHERE id IN {empty_list}
 # Results in: SELECT * FROM users WHERE id IN ()
 
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection --api-key my_key
 SELECT * FROM users WHERE deleted_at = {none_value}
 # Results in: SELECT * FROM users WHERE deleted_at = NULL
 ```
@@ -189,7 +189,7 @@ Unsafe operations that are blocked:
 If a variable is not found in the local namespace, a `ValidationError` is raised:
 
 ```python
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection --api-key my_key
 SELECT * FROM users WHERE id = {missing_variable}
 # Raises: ValidationError: Variable 'missing_variable' not found in local namespace
 ```
@@ -198,11 +198,11 @@ SELECT * FROM users WHERE id = {missing_variable}
 If an expression cannot be evaluated or contains unsafe code, a `ValidationError` is raised:
 
 ```python
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection --api-key my_key
 SELECT * FROM users WHERE id = {user_id +}
 # Raises: ValidationError: Expression evaluation failed: invalid syntax
 
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection --api-key my_key
 SELECT * FROM users WHERE id = {import os}
 # Raises: ValidationError: Unsafe expression detected: import\s+
 ```
@@ -215,11 +215,11 @@ When you know the expected SQL type, use explicit type formatting:
 ```python
 # Good
 user_ids = [1, 2, 3]
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection --api-key my_key
 SELECT * FROM users WHERE id IN {user_ids:list}
 
 # Also good (auto-detection works)
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection --api-key my_key
 SELECT * FROM users WHERE id IN {user_ids}
 ```
 
@@ -228,7 +228,7 @@ Check that variables exist and have expected values:
 
 ```python
 if 'user_id' in locals() and user_id is not None:
-    %%sqlconnect my_connection --api-key my_key
+    %%sql my_connection --api-key my_key
     SELECT * FROM users WHERE id = {user_id}
 ```
 
@@ -239,12 +239,12 @@ For calculated values, use expressions instead of pre-calculating:
 # Good - dynamic calculation
 base_price = 100
 discount = 0.1
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection --api-key my_key
 SELECT * FROM products WHERE final_price = {base_price * (1 - discount)}
 
 # Less ideal - pre-calculated
 final_price = base_price * (1 - discount)
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection --api-key my_key
 SELECT * FROM products WHERE final_price = {final_price}
 ```
 
@@ -254,7 +254,7 @@ Consider edge cases like empty lists and None values:
 ```python
 # Safe handling of potentially empty lists
 user_ids = get_user_ids()  # Might return empty list
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection --api-key my_key
 SELECT * FROM users WHERE id IN {user_ids if user_ids else [0]}
 ```
 
@@ -272,7 +272,7 @@ active_statuses = ['active', 'premium']
 excluded_users = [999, 1000, 1001]
 
 # Complex query with multiple variable types
-%%sqlconnect analytics_db --api-key my_key
+%%sql analytics_db --api-key my_key
 SELECT 
     u.id,
     u.name,
@@ -306,7 +306,7 @@ max_salary = 150000
 
 # Generate different queries based on parameters
 if report_type == "monthly":
-    %%sqlconnect hr_db --api-key my_key
+    %%sql hr_db --api-key my_key
     SELECT 
         d.name as department,
         COUNT(e.id) as employee_count,
@@ -336,7 +336,7 @@ if report_type == "monthly":
 Use verbose mode to see variable substitution details:
 
 ```python
-%%sqlconnect my_connection --api-key my_key --verbose
+%%sql my_connection --api-key my_key --verbose
 SELECT * FROM users WHERE id = {user_id}
 ```
 
@@ -356,15 +356,15 @@ You can gradually adopt new features:
 ```python
 # Old way (still works)
 user_id = 123
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection --api-key my_key
 SELECT * FROM users WHERE id = {user_id}
 
 # New way with explicit typing
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection --api-key my_key
 SELECT * FROM users WHERE id = {user_id:number}
 
 # New way with expressions
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection --api-key my_key
 SELECT * FROM users WHERE id = {user_id * 2}
 ```
 

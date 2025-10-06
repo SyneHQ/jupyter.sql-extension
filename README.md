@@ -78,20 +78,20 @@ SYNE_OAUTH_KEY = 'your_api_key_here'
 # export SYNE_OAUTH_KEY='your_api_key_here'
 
 # Option 3: Provide via command line (most explicit)
-%%sqlconnect --connection-id my_database --api-key your_api_key_here
+%%sql my_database --api-key your_api_key_here
 SELECT * FROM users LIMIT 10
 ```
 
 ### 2. Connect to SyneHQ
 ```python
-%%sqlconnect --connection-id my_database
+%%sql my_database
 SELECT * FROM users LIMIT 10
 ```
 
 ### 3. Use with variables
 ```python
 # Assign results to a variable
-%%sqlconnect --connection-id analytics_db --output users_df
+%%sql analytics_db --output users_df
 SELECT user_id, name, email, created_at 
 FROM users 
 WHERE created_at >= '2024-01-01'
@@ -102,7 +102,7 @@ WHERE created_at >= '2024-01-01'
 user_limit = 100
 department = 'engineering'
 
-%%sqlconnect --connection-id hr_db
+%%sql hr_db
 SELECT * FROM employees 
 WHERE department = {department} 
 LIMIT {user_limit}
@@ -111,17 +111,17 @@ LIMIT {user_limit}
 ### 5. Different output formats
 ```python
 # DataFrame output (default)
-%%sqlconnect --connection-id sales_db --format dataframe
+%%sql sales_db --format dataframe
 SELECT product, SUM(revenue) as total_revenue 
 FROM sales 
 GROUP BY product
 
 # HTML table
-%%sqlconnect --connection-id sales_db --format html
+%%sql sales_db --format html
 SELECT * FROM products WHERE price > 100
 
 # JSON output
-%%sqlconnect --connection-id api_db --format json
+%%sql api_db --format json
 SELECT config FROM settings WHERE active = true
 ```
 
@@ -131,7 +131,7 @@ The extension supports multiple ways to provide your SyneHQ API key for authenti
 
 ### 1. Command Line (Most Explicit)
 ```python
-%%sqlconnect --connection-id my_db --api-key your_api_key_here
+%%sql my_db --api-key your_api_key_here
 SELECT * FROM users LIMIT 10
 ```
 
@@ -141,7 +141,7 @@ SELECT * FROM users LIMIT 10
 SYNE_OAUTH_KEY = 'your_api_key_here'
 
 # Then use without specifying the key
-%%sqlconnect --connection-id my_db
+%%sql my_db
 SELECT * FROM users LIMIT 10
 ```
 
@@ -165,7 +165,7 @@ os.environ['SYNE_OAUTH_KEY'] = 'your_api_key_here'
 ### Getting Your API Key
 
 1. Log in to your [SyneHQ account](https://synehq.com)
-2. Navigate to Settings > API Keys
+2. Navigate to Teams > Choose the team >API Keys
 3. Generate a new API key with appropriate permissions
 4. Copy the key and use one of the authentication methods above
 
@@ -174,11 +174,11 @@ os.environ['SYNE_OAUTH_KEY'] = 'your_api_key_here'
 ### Basic Queries
 ```python
 # Simple select
-%%sqlconnect --connection-id main_db
+%%sql main_db
 SELECT COUNT(*) as total_users FROM users
 
 # Join multiple tables
-%%sqlconnect --connection-id warehouse
+%%sql warehouse
 SELECT 
     u.name,
     p.product_name,
@@ -194,7 +194,7 @@ WHERE o.order_date >= '2024-01-01'
 ```python
 
 # Load data into DataFrame
-%%sqlconnect --connection-id analytics
+%%sql analytics
 sales_data >> SELECT 
     DATE(order_date) as date,
     product_category,
@@ -222,7 +222,7 @@ min_revenue = 1000
 user_ids = [1, 2, 3, 4, 5]
 
 # Simple variable substitution
-%%sqlconnect --connection-id finance
+%%sql finance
 SELECT 
     customer_id,
     SUM(amount) as total_spent
@@ -233,20 +233,20 @@ HAVING SUM(amount) >= {min_revenue}
 ORDER BY total_spent DESC
 
 # List variables with automatic formatting
-%%sqlconnect --connection-id analytics
+%%sql analytics
 SELECT * FROM users WHERE id IN {user_ids}
 
 # Type-specific formatting
-%%sqlconnect --connection-id analytics
+%%sql analytics
 SELECT * FROM users WHERE id IN {user_ids:list}
 
 # Expression evaluation
-%%sqlconnect --connection-id finance
+%%sql finance
 SELECT * FROM products WHERE price = {min_revenue * 1.5}
 
 # Complex expressions with functions
 from datetime import datetime, timedelta
-%%sqlconnect --connection-id analytics
+%%sql analytics
 SELECT * FROM users WHERE created_at >= {datetime.now() - timedelta(days=30)}
 ```
 
@@ -261,7 +261,7 @@ The extension provides comprehensive Python variable substitution in SQL queries
 user_id = 123
 user_name = "John Doe"
 
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection -k my_key
 SELECT * FROM users WHERE id = {user_id}
 SELECT * FROM users WHERE name = {user_name}
 ```
@@ -272,7 +272,7 @@ user_ids = [1, 2, 3, 4, 5]
 price = 99.99
 created_date = datetime(2024, 1, 1)
 
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection -k my_key
 SELECT * FROM users WHERE id IN {user_ids:list}
 SELECT * FROM products WHERE price = {price:number}
 SELECT * FROM users WHERE created_at >= {created_date:date}
@@ -284,7 +284,7 @@ base_price = 100
 discount_rate = 0.1
 tax_rate = 0.08
 
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection -k my_key
 SELECT * FROM products WHERE final_price = {base_price * (1 - discount_rate) * (1 + tax_rate)}
 ```
 
@@ -292,7 +292,7 @@ SELECT * FROM products WHERE final_price = {base_price * (1 - discount_rate) * (
 ```python
 from datetime import datetime, timedelta
 
-%%sqlconnect my_connection --api-key my_key
+%%sql my_connection -k my_key
 SELECT * FROM users WHERE created_at >= {datetime.now() - timedelta(days=30)}
 SELECT * FROM products WHERE rounded_price = {round(99.99 * 1.15, 2)}
 ```
@@ -325,7 +325,7 @@ active_statuses = ['active', 'premium']
 excluded_users = [999, 1000, 1001]
 
 # Complex query with multiple variable types
-%%sqlconnect analytics_db --api-key my_key
+%%sql analytics_db -k my_key
 SELECT 
     u.id,
     u.name,
@@ -353,13 +353,13 @@ For detailed documentation on Python variable support, see [PYTHON_VARIABLE_SUPP
 ### Available Connections
 ```python
 # List available connections
-%%sqlconnect --list-connections --api-key {key}
+%%sql --list-connections -k {key}
 ```
 
 ### Test Connection
 ```python
 # Test if connection is working
-%%sqlconnect {connection_id}
+%%sql {connection_id}
 SELECT 1
 ```
 
@@ -368,7 +368,7 @@ SELECT 1
 The extension provides comprehensive error handling with user-friendly messages:
 
 ```python
-%%sqlconnect --connection-id invalid_db
+%%sql invalid_db
 SELECT * FROM nonexistent_table
 ```
 
@@ -384,12 +384,12 @@ Common error scenarios:
 ```python
 # ❌ This will be blocked
 user_input = "'; DROP TABLE users; --"
-%%sqlconnect --connection-id db
+%%sql db
 SELECT * FROM users WHERE name = '{user_input}'
 
 # ✅ Use parameter binding instead
 user_input = "John Doe"
-%%sqlconnect --connection-id db
+%%sql db
 SELECT * FROM users WHERE name = {user_input}
 ```
 
@@ -405,7 +405,7 @@ The extension automatically validates queries for:
 ### Query Caching
 ```python
 # Enable caching for repeated queries
-%%sqlconnect --connection-id db --cache
+%%sql db --cache
 SELECT expensive_aggregation() FROM large_table
 ```
 
@@ -417,7 +417,7 @@ import asyncio
 async def run_queries():
     tasks = []
     for db in ['db1', 'db2', 'db3']:
-        task = execute_query(f"%%sqlconnect --connection-id {db}\nSELECT COUNT(*) FROM table")
+        task = execute_query(f"%%sql {db}\nSELECT COUNT(*) FROM table")
         tasks.append(task)
     
     results = await asyncio.gather(*tasks)
@@ -447,7 +447,7 @@ async def run_queries():
 ### Debug Mode
 ```python
 # Enable debug logging
-%%sqlconnect --connection-id db --debug
+%%sql db --debug
 SELECT * FROM users
 ```
 

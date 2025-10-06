@@ -5,7 +5,7 @@ A robust Jupyter Notebook extension for executing SQL queries through
 internal service connections with security, validation, and rich output formatting.
 
 This extension provides:
-- %%sqlconnect cell magic for secure SQL execution
+- %%sql cell magic for secure SQL execution
 - Connection management with credential retrieval
 - Rich output formatting (DataFrames, tables, JSON)
 - Comprehensive error handling and validation
@@ -297,7 +297,7 @@ def load_ipython_extension(ipython):
         if register_magic():
             print("✅ Jupyter SQL Extension loaded successfully!")
             print(f"   Version: {__version__}")
-            print("   Use %%sqlconnect to execute SQL queries.")
+            print("   Use %%sql to execute SQL queries.")
 
             # Show optional features status
             optional_features = get_optional_features()
@@ -325,7 +325,7 @@ def unload_ipython_extension(ipython):
     try:
         # Remove the magic command
         if hasattr(ipython, 'magics_manager'):
-            magic_name = 'sqlconnect'
+            magic_name = 'sql'
             if magic_name in ipython.magics_manager.magics['cell']:
                 del ipython.magics_manager.magics['cell'][magic_name]
 

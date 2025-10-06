@@ -62,7 +62,7 @@ define([
                 try:
                     %load_ext jupyter_sql_extension
                     print("✅ Jupyter SQL Extension loaded successfully!")
-                    print("   Use %%sqlconnect to execute SQL queries.")
+                    print("   Use %%sql to execute SQL queries.")
                 except Exception as e:
                     print(f"⚠️  Failed to load SQL extension: {e}")
             `);
@@ -97,16 +97,16 @@ define([
                         </div>
                         <div class="modal-body">
                             <h6>Basic Usage:</h6>
-                            <pre><code>%%sqlconnect your_connection_id
+                            <pre><code>%%sql your_connection_id
 SELECT * FROM your_table LIMIT 10</code></pre>
                             
                             <h6>With Options:</h6>
-                            <pre><code>%%sqlconnect your_db --format json --limit 5 --verbose
+                            <pre><code>%%sql your_db --format json --limit 5 --verbose
 SELECT name, email FROM users WHERE active = true</code></pre>
                             
                             <h6>Variable Substitution:</h6>
                             <pre><code>user_id = 123
-%%sqlconnect test_db
+%%sql test_db
 SELECT * FROM users WHERE id = {user_id}</code></pre>
                             
                             <h6>Available Options:</h6>

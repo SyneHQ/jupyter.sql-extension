@@ -1,7 +1,7 @@
 """
 Jupyter SQL Extension - Magic Command Implementation
 
-This module implements the %%sqlconnect cell magic for secure SQL query execution
+This module implements the %%sql cell magic for secure SQL query execution
 through internal service connections.
 
 The magic provides:
@@ -123,7 +123,7 @@ class SQLConnectMagic(Magics):
     """
     Jupyter magic for executing SQL queries through internal services.
 
-    This magic provides the %%sqlconnect command that:
+    This magic provides the %%sql command that:
     1. Takes a connectionId to retrieve database credentials securely
     2. Executes SQL queries against the configured database
     3. Returns rich formatted results (DataFrames, HTML tables, JSON)
@@ -132,34 +132,34 @@ class SQLConnectMagic(Magics):
     6. Supports Python variable substitution in SQL queries
 
     Example usage:
-        %%sqlconnect my_db_connection --api-key my_key
+        %%sql my_db_connection --api-key my_key
         SELECT * FROM users
         WHERE created_at >= '2024-01-01'
         LIMIT 10
 
     Variable assignment example:
-        %%sqlconnect my_db_connection --api-key my_key
+        %%sql my_db_connection --api-key my_key
         result_df << SELECT * FROM users LIMIT 10
 
     Python variable substitution examples:
         # Simple variable substitution
         user_id = 123
-        %%sqlconnect my_db_connection --api-key my_key
+        %%sql my_db_connection --api-key my_key
         SELECT * FROM users WHERE id = {user_id}
 
         # Type-specific formatting
         user_ids = [1, 2, 3, 4, 5]
-        %%sqlconnect my_db_connection --api-key my_key
+        %%sql my_db_connection --api-key my_key
         SELECT * FROM users WHERE id IN {user_ids:list}
 
         # Expression evaluation
         min_age = 18
         max_age = 65
-        %%sqlconnect my_db_connection --api-key my_key
+        %%sql my_db_connection --api-key my_key
         SELECT * FROM users WHERE age BETWEEN {min_age} AND {max_age}
 
         # Function calls and complex expressions
-        %%sqlconnect my_db_connection --api-key my_key
+        %%sql my_db_connection --api-key my_key
         SELECT * FROM users WHERE created_at >= {datetime.now() - timedelta(days=30):date}
     """
 
@@ -303,7 +303,7 @@ class SQLConnectMagic(Magics):
         action='store_true',
         help='Enable verbose output'
     )
-    def sqlconnect(self, line: str, cell: str) -> Optional[pd.DataFrame]:
+    def sql(self, line: str, cell: str) -> Optional[pd.DataFrame]:
         """
         Execute SQL query through secure connection service.
 
@@ -318,7 +318,7 @@ class SQLConnectMagic(Magics):
         Variable Assignment Syntax:
             Use 'variable_name << SQL_QUERY' to assign the result DataFrame to a variable.
             Example:
-                %%sqlconnect my_connection --api-key my_key
+                %%sql my_connection --api-key my_key
                 result_df << SELECT * FROM users LIMIT 10
 
         Args:
@@ -365,13 +365,13 @@ class SQLConnectMagic(Magics):
                     # No running loop - safe to use asyncio.run
                     return asyncio.run(self._sqlconnect_async(line, cell))
         except Exception as e:
-            logger.error(f"Error in sqlconnect magic: {e}")
+            logger.error(f"Error in sql magic: {e}")
             self._display_error("Unexpected Error", str(e), "error")
             return None
 
     async def _sqlconnect_async(self, line: str, cell: str) -> Optional[pd.DataFrame]:
         """
-        Async implementation of the sqlconnect magic.
+        Async implementation of the sql magic.
         
         Args:
             line: Magic command line with arguments
@@ -385,7 +385,7 @@ class SQLConnectMagic(Magics):
 
         try:
             # Parse magic arguments
-            args = parse_argstring(self.sqlconnect, line)
+            args = parse_argstring(self.sql, line)
 
             if args.verbose:
                 logger.setLevel(logging.DEBUG)
@@ -416,7 +416,7 @@ class SQLConnectMagic(Magics):
             if not api_key:
                 raise ValidationError(
                     "API key is required. Provide it via:\n"
-                    "  - Command line: %%sqlconnect connection_id --api-key YOUR_KEY\n"
+                    "  - Command line: %%sql connection_id --api-key YOUR_KEY\n"
                     "  - Global variable: SYNE_OAUTH_KEY = 'YOUR_KEY'\n"
                     "  - Environment variable: export SYNE_OAUTH_KEY='YOUR_KEY'"
                 )
@@ -535,7 +535,7 @@ class SQLConnectMagic(Magics):
             self._record_metrics(connection_id or "unknown", cell, time.time() - start_time, 0, False)
 
         except Exception as e:
-            logger.exception(f"Unexpected error in sqlconnect magic: {e}")
+            logger.exception(f"Unexpected error in sql magic: {e}")
             self._display_error("Unexpected Error",
                               f"An unexpected error occurred: {str(e)}",
                               "error")
@@ -1166,11 +1166,11 @@ def register_magic() -> bool:
                 # Create an instance and register the method
                 magic_instance = SQLConnectMagic(ipython)
                 ipython.register_magic_function(
-                    magic_instance.sqlconnect,
+                    magic_instance.sql,
                     magic_kind='cell',
-                    magic_name='sqlconnect'
+                    magic_name='sql'
                 )
-                logger.info("SQLConnect magic registered using register_magic_function")
+                logger.info("SQL magic registered using register_magic_function")
                 return True
         except Exception as e:
             logger.debug(f"register_magic_function failed: {e}")
@@ -1179,7 +1179,7 @@ def register_magic() -> bool:
             # Method 3: Use magics_manager directly (most compatible)
             if hasattr(ipython, 'magics_manager'):
                 magic_instance = SQLConnectMagic(ipython)
-                ipython.magics_manager.magics['cell']['sqlconnect'] = magic_instance.sqlconnect
+                ipython.magics_manager.magics['cell']['sql'] = magic_instance.sql
                 logger.info("SQLConnect magic registered using magics_manager")
                 return True
         except Exception as e:
