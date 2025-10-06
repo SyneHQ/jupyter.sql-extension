@@ -11,23 +11,29 @@ The magic provides:
 - Comprehensive error handling with user-friendly messages
 - Type-safe implementation with full logging
 - Modular, testable architecture
+- Python variable substitution in SQL queries with multiple syntax options:
+  * Simple variables: {variable_name}
+  * Type-specific formatting: {variable_name:type}
+  * Expression evaluation: {expression}
+  * Function calls: {function_call()}
+- Safe expression evaluation with security restrictions
+- Automatic type detection and SQL-safe formatting
 """
 
 import asyncio
 import logging
 import re
 import time
-from typing import Dict, Any, Optional, Union, Tuple, List
+from typing import Dict, Any, Optional, Tuple, List
 from functools import wraps
-from urllib.parse import urlparse
+from datetime import datetime
 
 # IPython/Jupyter imports
-from IPython.core.magic import Magics, cell_magic, magics_class, needs_local_scope
+from IPython.core.magic import Magics, cell_magic, magics_class
 from IPython.core.magic_arguments import (
     argument,
     magic_arguments,
-    parse_argstring,
-    MagicArgumentParser
+    parse_argstring
 )
 from IPython.display import display, HTML, JSON
 from IPython.core.display import DisplayObject
@@ -39,21 +45,18 @@ import pandas as pd
 from .client import SQLServiceClient, ConnectionConfig
 from .config import ExtensionConfig, load_config
 from .exceptions import (
-    SQLExtensionError,
     ConnectionError,
     AuthenticationError,
     ValidationError,
-    QueryExecutionError,
-    ConfigurationError
+    QueryExecutionError
 )
 from .utils import (
     sanitize_query,
     validate_connection_id,
-    format_query_result,
     setup_logging,
     measure_performance
 )
-from .types import QueryResult, OutputFormat, QueryMetadata
+from .types import QueryResult, QueryMetadata
 
 
 # Set up module logger
@@ -124,6 +127,7 @@ class SQLConnectMagic(Magics):
     3. Returns rich formatted results (DataFrames, HTML tables, JSON)
     4. Handles errors gracefully with detailed feedback
     5. Supports variable assignment using 'variable_name <<' syntax
+    6. Supports Python variable substitution in SQL queries
 
     Example usage:
         %%sqlconnect my_db_connection --api-key my_key
@@ -134,6 +138,27 @@ class SQLConnectMagic(Magics):
     Variable assignment example:
         %%sqlconnect my_db_connection --api-key my_key
         result_df << SELECT * FROM users LIMIT 10
+
+    Python variable substitution examples:
+        # Simple variable substitution
+        user_id = 123
+        %%sqlconnect my_db_connection --api-key my_key
+        SELECT * FROM users WHERE id = {user_id}
+
+        # Type-specific formatting
+        user_ids = [1, 2, 3, 4, 5]
+        %%sqlconnect my_db_connection --api-key my_key
+        SELECT * FROM users WHERE id IN {user_ids:list}
+
+        # Expression evaluation
+        min_age = 18
+        max_age = 65
+        %%sqlconnect my_db_connection --api-key my_key
+        SELECT * FROM users WHERE age BETWEEN {min_age} AND {max_age}
+
+        # Function calls and complex expressions
+        %%sqlconnect my_db_connection --api-key my_key
+        SELECT * FROM users WHERE created_at >= {datetime.now() - timedelta(days=30):date}
     """
 
     def __init__(self, shell=None):
@@ -544,6 +569,12 @@ class SQLConnectMagic(Magics):
         """
         Substitute Python variables in the SQL query safely.
 
+        Supports multiple syntax patterns:
+        1. {variable_name} - Simple variable substitution
+        2. {variable_name:type} - Type-specific formatting
+        3. {expression} - Python expression evaluation
+        4. {function_call()} - Function call evaluation
+
         Args:
             query: SQL query with potential variable references
             local_ns: Local namespace containing variables
@@ -552,38 +583,221 @@ class SQLConnectMagic(Magics):
         Returns:
             Query with variables substituted
         """
-        # Find variable references like {variable_name}
-        variable_pattern = r'\{([a-zA-Z_][a-zA-Z0-9_]*)\}'
-        variables_found = re.findall(variable_pattern, query)
+        # Pattern 1: Simple variable substitution {variable_name}
+        simple_pattern = r'\{([a-zA-Z_][a-zA-Z0-9_]*)\}'
+        simple_matches = re.findall(simple_pattern, query)
+        
+        # Pattern 2: Type-specific formatting {variable_name:type}
+        typed_pattern = r'\{([a-zA-Z_][a-zA-Z0-9_]*):([a-zA-Z_][a-zA-Z0-9_]*)\}'
+        typed_matches = re.findall(typed_pattern, query)
+        
+        # Pattern 3: Expression evaluation {expression}
+        expression_pattern = r'\{([^}]+)\}'
+        expression_matches = re.findall(expression_pattern, query)
+        
+        # Filter out simple and typed matches from expression matches
+        expression_matches = [expr for expr in expression_matches 
+                            if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', expr) and
+                               not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*:[a-zA-Z_][a-zA-Z0-9_]*$', expr)]
 
-        if variables_found and verbose:
-            print(f"🔄 Found variables to substitute: {variables_found}")
+        all_variables = set(simple_matches + [match[0] for match in typed_matches])
+        
+        if all_variables and verbose:
+            print(f"🔄 Found variables to substitute: {sorted(all_variables)}")
+        
+        if expression_matches and verbose:
+            print(f"🔄 Found expressions to evaluate: {expression_matches}")
 
-        for var_name in variables_found:
+        # Process simple variable substitutions
+        for var_name in simple_matches:
             if var_name in local_ns:
                 var_value = local_ns[var_name]
-
-                # Safe string formatting for different types
-                if isinstance(var_value, str):
-                    # Escape single quotes and wrap in quotes
-                    safe_value = f"'{var_value.replace(chr(39), chr(39) + chr(39))}'"
-                elif isinstance(var_value, (int, float)):
-                    safe_value = str(var_value)
-                elif isinstance(var_value, (list, tuple)):
-                    # Convert to SQL IN clause format
-                    safe_items = [f"'{str(item).replace(chr(39), chr(39) + chr(39))}'" if isinstance(item, str) else str(item) for item in var_value]
-                    safe_value = f"({', '.join(safe_items)})"
-                else:
-                    safe_value = f"'{str(var_value).replace(chr(39), chr(39) + chr(39))}'"
-
+                safe_value = self._format_value_for_sql(var_value, 'auto', verbose)
                 query = query.replace(f"{{{var_name}}}", safe_value)
-
+                
                 if verbose:
                     print(f"🔄 Substituted {var_name} = {safe_value}")
             else:
                 raise ValidationError(f"Variable '{var_name}' not found in local namespace")
 
+        # Process typed variable substitutions
+        for var_name, var_type in typed_matches:
+            if var_name in local_ns:
+                var_value = local_ns[var_name]
+                safe_value = self._format_value_for_sql(var_value, var_type, verbose)
+                query = query.replace(f"{{{var_name}:{var_type}}}", safe_value)
+                
+                if verbose:
+                    print(f"🔄 Substituted {var_name}:{var_type} = {safe_value}")
+            else:
+                raise ValidationError(f"Variable '{var_name}' not found in local namespace")
+
+        # Process expression evaluations
+        for expression in expression_matches:
+            try:
+                # Evaluate the expression safely
+                result = self._evaluate_expression(expression, local_ns, verbose)
+                safe_value = self._format_value_for_sql(result, 'auto', verbose)
+                query = query.replace(f"{{{expression}}}", safe_value)
+                
+                if verbose:
+                    print(f"🔄 Evaluated expression '{expression}' = {safe_value}")
+            except Exception as e:
+                raise ValidationError(f"Failed to evaluate expression '{expression}': {e}")
+
         return query
+
+    def _format_value_for_sql(self, value: Any, format_type: str = 'auto', verbose: bool = False) -> str:
+        """
+        Format a Python value for safe use in SQL queries.
+
+        Args:
+            value: Python value to format
+            format_type: Format type ('auto', 'string', 'number', 'list', 'date', 'raw')
+            verbose: Enable verbose output
+
+        Returns:
+            SQL-safe formatted value
+        """
+        if value is None:
+            return 'NULL'
+        
+        if format_type == 'auto':
+            # Auto-detect format based on value type
+            if isinstance(value, str):
+                format_type = 'string'
+            elif isinstance(value, (int, float)):
+                format_type = 'number'
+            elif isinstance(value, (list, tuple)):
+                format_type = 'list'
+            elif isinstance(value, datetime):
+                format_type = 'date'
+            else:
+                format_type = 'string'
+        
+        if format_type == 'string':
+            # Escape single quotes and wrap in quotes
+            escaped_value = str(value).replace("'", "''")
+            return f"'{escaped_value}'"
+        
+        elif format_type == 'number':
+            return str(value)
+        
+        elif format_type == 'list':
+            # Convert to SQL IN clause format
+            if not value:
+                return '()'
+            
+            safe_items = []
+            for item in value:
+                if isinstance(item, str):
+                    escaped_item = str(item).replace("'", "''")
+                    safe_items.append(f"'{escaped_item}'")
+                elif isinstance(item, (int, float)):
+                    safe_items.append(str(item))
+                elif item is None:
+                    safe_items.append('NULL')
+                else:
+                    escaped_item = str(item).replace("'", "''")
+                    safe_items.append(f"'{escaped_item}'")
+            
+            return f"({', '.join(safe_items)})"
+        
+        elif format_type == 'date':
+            if isinstance(value, datetime):
+                return f"'{value.isoformat()}'"
+            else:
+                return f"'{str(value)}'"
+        
+        elif format_type == 'raw':
+            # Use value as-is (be careful with this!)
+            return str(value)
+        
+        else:
+            # Default to string formatting
+            escaped_value = str(value).replace("'", "''")
+            return f"'{escaped_value}'"
+
+    def _evaluate_expression(self, expression: str, local_ns: Dict[str, Any], verbose: bool = False) -> Any:
+        """
+        Safely evaluate a Python expression in the given namespace.
+
+        Args:
+            expression: Python expression to evaluate
+            local_ns: Local namespace containing variables
+            verbose: Enable verbose output
+
+        Returns:
+            Result of expression evaluation
+
+        Raises:
+            ValidationError: If expression evaluation fails or is unsafe
+        """
+        # Security check - only allow safe operations
+        unsafe_patterns = [
+            r'import\s+',
+            r'from\s+',
+            r'__\w+__',
+            r'exec\s*\(',
+            r'eval\s*\(',
+            r'open\s*\(',
+            r'file\s*\(',
+            r'input\s*\(',
+            r'raw_input\s*\(',
+            r'compile\s*\(',
+            r'globals\s*\(',
+            r'locals\s*\(',
+            r'vars\s*\(',
+            r'dir\s*\(',
+            r'getattr\s*\(',
+            r'setattr\s*\(',
+            r'delattr\s*\(',
+            r'hasattr\s*\(',
+        ]
+        
+        for pattern in unsafe_patterns:
+            if re.search(pattern, expression, re.IGNORECASE):
+                raise ValidationError(f"Unsafe expression detected: {pattern}")
+        
+        # Additional safety: check for dangerous function calls
+        dangerous_functions = [
+            'os', 'sys', 'subprocess', 'shutil', 'pickle', 'marshal',
+            'socket', 'urllib', 'requests', 'http', 'ftplib', 'smtplib'
+        ]
+        
+        for func in dangerous_functions:
+            if func in expression:
+                raise ValidationError(f"Dangerous function '{func}' detected in expression")
+        
+        try:
+            # Create a safe evaluation environment with only safe built-ins
+            safe_globals = {
+                '__builtins__': {
+                    # Safe built-in functions
+                    'abs': abs, 'all': all, 'any': any, 'bin': bin, 'bool': bool,
+                    'chr': chr, 'dict': dict, 'divmod': divmod, 'enumerate': enumerate,
+                    'filter': filter, 'float': float, 'format': format, 'hex': hex,
+                    'int': int, 'isinstance': isinstance, 'issubclass': issubclass,
+                    'iter': iter, 'len': len, 'list': list, 'map': map, 'max': max,
+                    'min': min, 'oct': oct, 'ord': ord, 'pow': pow, 'range': range,
+                    'repr': repr, 'reversed': reversed, 'round': round, 'set': set,
+                    'sorted': sorted, 'str': str, 'sum': sum, 'tuple': tuple,
+                    'type': type, 'zip': zip, 'frozenset': frozenset,
+                    # Safe constants
+                    'None': None, 'True': True, 'False': False
+                }
+            }
+            
+            # Evaluate the expression
+            result = eval(expression, safe_globals, local_ns)
+            
+            if verbose:
+                print(f"🔄 Expression '{expression}' evaluated to: {type(result).__name__}")
+            
+            return result
+            
+        except Exception as e:
+            raise ValidationError(f"Expression evaluation failed: {e}")
 
     def _validate_query_safety(self, query: str) -> None:
         """

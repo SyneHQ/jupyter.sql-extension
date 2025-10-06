@@ -113,7 +113,9 @@ class ConfigManager:
         Returns:
             Configuration dictionary
         """
-        config = {}
+        config = {
+            'sql_service_url': 'https://cosmos.synehq.com/api/v1'
+        }
         
         # Service configuration
         if os.getenv('SQL_SERVICE_URL'):
