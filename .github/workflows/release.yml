@@ -6,6 +6,8 @@ on:
       - sudo
     paths:
       - '**.py'
+      - 'README.md'
+      - '**.yml'
 
 jobs:
   publish:

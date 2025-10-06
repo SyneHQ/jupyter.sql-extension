@@ -2,6 +2,8 @@
 
 A powerful Jupyter extension designed to work seamlessly with the **SyneHQ.com** data platform, providing secure access to your connected data sources without the need for managing database credentials.
 
+[![Release to PyPI](https://github.com/SyneHQ/jupyter.sql-extension/actions/workflows/release.yml/badge.svg?branch=sudo)](https://github.com/SyneHQ/jupyter.sql-extension/actions/workflows/release.yml)
+
 ## About SyneHQ Integration
 
 This extension is specifically built for the [SyneHQ.com](https://synehq.com) data platform, which provides:
