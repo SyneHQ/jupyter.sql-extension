@@ -69,13 +69,26 @@ pip install -e .
 
 ## Quick Start
 
-### 1. Connect to SyneHQ
+### 1. Set up Authentication
+```python
+# Option 1: Set global variable (recommended for Jupyter notebooks)
+SYNE_OAUTH_KEY = 'your_api_key_here'
+
+# Option 2: Use environment variable
+# export SYNE_OAUTH_KEY='your_api_key_here'
+
+# Option 3: Provide via command line (most explicit)
+%%sqlconnect --connection-id my_database --api-key your_api_key_here
+SELECT * FROM users LIMIT 10
+```
+
+### 2. Connect to SyneHQ
 ```python
 %%sqlconnect --connection-id my_database
 SELECT * FROM users LIMIT 10
 ```
 
-### 2. Use with variables
+### 3. Use with variables
 ```python
 # Assign results to a variable
 %%sqlconnect --connection-id analytics_db --output users_df
@@ -84,7 +97,7 @@ FROM users
 WHERE created_at >= '2024-01-01'
 ```
 
-### 3. Parameterized queries
+### 4. Parameterized queries
 ```python
 user_limit = 100
 department = 'engineering'
@@ -95,7 +108,7 @@ WHERE department = {department}
 LIMIT {user_limit}
 ```
 
-### 4. Different output formats
+### 5. Different output formats
 ```python
 # DataFrame output (default)
 %%sqlconnect --connection-id sales_db --format dataframe
@@ -111,6 +124,50 @@ SELECT * FROM products WHERE price > 100
 %%sqlconnect --connection-id api_db --format json
 SELECT config FROM settings WHERE active = true
 ```
+
+## Authentication
+
+The extension supports multiple ways to provide your SyneHQ API key for authentication. The API key is resolved in the following order of preference:
+
+### 1. Command Line (Most Explicit)
+```python
+%%sqlconnect --connection-id my_db --api-key your_api_key_here
+SELECT * FROM users LIMIT 10
+```
+
+### 2. Global Variable (Recommended for Jupyter)
+```python
+# Set once at the beginning of your notebook
+SYNE_OAUTH_KEY = 'your_api_key_here'
+
+# Then use without specifying the key
+%%sqlconnect --connection-id my_db
+SELECT * FROM users LIMIT 10
+```
+
+### 3. Environment Variable
+```bash
+# Set in your shell environment
+export SYNE_OAUTH_KEY='your_api_key_here'
+
+# Or in your Jupyter environment
+import os
+os.environ['SYNE_OAUTH_KEY'] = 'your_api_key_here'
+```
+
+### Security Best Practices
+
+- **Never hardcode API keys** in your notebooks or commit them to version control
+- **Use environment variables** for production deployments
+- **Use global variables** for interactive development in Jupyter
+- **Rotate API keys regularly** for enhanced security
+
+### Getting Your API Key
+
+1. Log in to your [SyneHQ account](https://synehq.com)
+2. Navigate to Settings > API Keys
+3. Generate a new API key with appropriate permissions
+4. Copy the key and use one of the authentication methods above
 
 ## Usage Examples
 
@@ -406,6 +463,7 @@ SELECT * FROM users
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--connection-id` | SyneHQ connection identifier | Required |
+| `--api-key` | SyneHQ API key for authentication | Auto-detected |
 | `--output` | Variable name for query results | None |
 | `--format` | Output format (dataframe, html, json) | dataframe |
 | `--timeout` | Query timeout in seconds | 30 |
