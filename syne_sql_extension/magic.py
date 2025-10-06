@@ -22,6 +22,7 @@ The magic provides:
 
 import asyncio
 import logging
+import os
 import re
 import time
 from typing import Dict, Any, Optional, Tuple, List
@@ -395,9 +396,29 @@ class SQLConnectMagic(Magics):
                 raise ValidationError(f"Invalid connection ID: {connection_id}")
 
             api_key = args.api_key
+            
+            # Find API key from multiple sources in order of preference:
+            # 1. Command line argument (already set)
+            # 2. Global variable SYNE_OAUTH_KEY
+            # 3. Environment variable SYNE_OAUTH_KEY
+            if not api_key:
+                # Check for global variable first
+                if self.shell and hasattr(self.shell, 'user_ns') and 'SYNE_OAUTH_KEY' in self.shell.user_ns:
+                    api_key = self.shell.user_ns['SYNE_OAUTH_KEY']
+                    logger.debug("Using API key from global variable SYNE_OAUTH_KEY")
+                else:
+                    # Fall back to environment variable
+                    api_key = os.getenv('SYNE_OAUTH_KEY')
+                    if api_key:
+                        logger.debug("Using API key from environment variable SYNE_OAUTH_KEY")
 
             if not api_key:
-                raise ValidationError("API key is required")
+                raise ValidationError(
+                    "API key is required. Provide it via:\n"
+                    "  - Command line: %%sqlconnect connection_id --api-key YOUR_KEY\n"
+                    "  - Global variable: SYNE_OAUTH_KEY = 'YOUR_KEY'\n"
+                    "  - Environment variable: export SYNE_OAUTH_KEY='YOUR_KEY'"
+                )
 
 
             # Get local namespace for variable substitution
