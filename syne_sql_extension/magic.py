@@ -251,10 +251,11 @@ class SQLConnectMagic(Magics):
     @argument(
         'connection_id',
         type=str,
+        default=None,
         help='Database connection identifier, "direct" for default connection, or "config:..." for custom config'
     )
     @argument(
-        "--list-connections",
+        "--list-connections", "-l",
         action="store_true",
         help="Get all connections"
     )
@@ -395,21 +396,6 @@ class SQLConnectMagic(Magics):
             if args.verbose:
                 logger.setLevel(logging.DEBUG)
                 print("🔍 Verbose mode enabled")
-                
-        
-            if args.list_connections:
-                if args.verbose:
-                    print("🔍 Listing connections")
-                connections = await self._list_connections()
-                connections_df = pd.DataFrame(connections)
-                if args.verbose:
-                    print("🔍 Connections listed")
-                return connections_df
-
-            # Validate connection ID
-            connection_id = args.connection_id.strip()
-            if not validate_connection_id(connection_id):
-                raise ValidationError(f"Invalid connection ID: {connection_id}")
 
             api_key = args.api_key
             
@@ -436,6 +422,20 @@ class SQLConnectMagic(Magics):
                     "  - Environment variable: export SYNE_OAUTH_KEY='YOUR_KEY'"
                 )
 
+        
+            if args.list_connections:
+                if args.verbose:
+                    print("🔍 Listing connections")
+                connections = await self._list_connections(api_key)
+                connections_df = pd.DataFrame(connections)
+                if args.verbose:
+                    print("🔍 Connections listed")
+                return connections_df
+
+            # Validate connection ID
+            connection_id = args.connection_id.strip()
+            if not validate_connection_id(connection_id):
+                raise ValidationError(f"Invalid connection ID: {connection_id}")
 
             # Get local namespace for variable substitution
             local_ns = self.shell.user_ns if self.shell else {}
@@ -944,11 +944,11 @@ class SQLConnectMagic(Magics):
         except Exception as e:
             raise QueryExecutionError(f"Query execution failed: {e}")
 
-    async def _list_connections(self) -> List[dict[str, str]]:
+    async def _list_connections(self, api_key) -> List[dict[str, str]]:
         """
         List all connections.
         """
-        return await self.sql_client.list_connections()
+        return await self.sql_client.list_connections(api_key)
 
     def _apply_query_limit(self, query: str, limit: int) -> str:
         """

@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
 import aiohttp
+from aiohttp.web import head
 from pydantic import BaseModel, Field, validator
 
 from .exceptions import (
@@ -430,13 +431,16 @@ class SQLServiceClient:
                 raise
             raise QueryExecutionError(f"Failed to execute query: {e}")
     
-    async def list_connections(self) -> List[str]:
+    async def list_connections(self, api_key) -> List[str]:
         """
         List all connections.
         """
         response = await self._make_request(
             method="GET",
-            endpoint="/connections"
+            endpoint="/connections",
+            headers={
+                'X-Api-Key': api_key
+            }
         )
         return response.get("connections", [])
     
