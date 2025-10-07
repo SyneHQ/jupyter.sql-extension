@@ -429,6 +429,17 @@ class SQLServiceClient:
             if isinstance(e, (QueryExecutionError, ConnectionError)):
                 raise
             raise QueryExecutionError(f"Failed to execute query: {e}")
+    
+    async def list_connections(self) -> List[str]:
+        """
+        List all connections.
+        """
+        response = await self._make_request(
+            method="GET",
+            endpoint="/connections"
+        )
+        return response.get("connections", [])
+    
     async def validate_query(self, query: str) -> Dict[str, Any]:
         """
         Validate SQL query without execution.

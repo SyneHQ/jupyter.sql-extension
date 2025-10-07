@@ -254,6 +254,11 @@ class SQLConnectMagic(Magics):
         help='Database connection identifier, "direct" for default connection, or "config:..." for custom config'
     )
     @argument(
+        "--list-connections",
+        action="store_true",
+        help="Get all connections"
+    )
+    @argument(
         '--api-key', '-k',
         type=str,
         default=None,
@@ -390,6 +395,16 @@ class SQLConnectMagic(Magics):
             if args.verbose:
                 logger.setLevel(logging.DEBUG)
                 print("🔍 Verbose mode enabled")
+                
+        
+            if args.list_connections:
+                if args.verbose:
+                    print("🔍 Listing connections")
+                connections = await self._list_connections()
+                connections_df = pd.DataFrame(connections)
+                if args.verbose:
+                    print("🔍 Connections listed")
+                return connections_df
 
             # Validate connection ID
             connection_id = args.connection_id.strip()
@@ -928,6 +943,12 @@ class SQLConnectMagic(Magics):
 
         except Exception as e:
             raise QueryExecutionError(f"Query execution failed: {e}")
+
+    async def _list_connections(self) -> List[dict[str, str]]:
+        """
+        List all connections.
+        """
+        return await self.sql_client.list_connections()
 
     def _apply_query_limit(self, query: str, limit: int) -> str:
         """
