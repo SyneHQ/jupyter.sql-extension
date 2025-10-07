@@ -251,11 +251,12 @@ class SQLConnectMagic(Magics):
     @argument(
         'connection_id',
         type=str,
+        nargs='?',
         default=None,
         help='Database connection identifier, "direct" for default connection, or "config:..." for custom config'
     )
     @argument(
-        "--list-connections", "-l",
+        "--list-connections", "-lc",
         action="store_true",
         help="Get all connections"
     )
@@ -340,7 +341,7 @@ class SQLConnectMagic(Magics):
             try:
                 import nest_asyncio
                 nest_asyncio.apply()
-                return asyncio.run(self._sqlconnect_async(line, cell))
+                return asyncio.run(self._sqlconnect_async(line, cell or ""))
             except ImportError:
                 # nest_asyncio not available, check if we're in an event loop
                 try:
@@ -351,7 +352,7 @@ class SQLConnectMagic(Magics):
                         new_loop = asyncio.new_event_loop()
                         asyncio.set_event_loop(new_loop)
                         try:
-                            return new_loop.run_until_complete(self._sqlconnect_async(line, cell))
+                            return new_loop.run_until_complete(self._sqlconnect_async(line, cell or ""))
                         finally:
                             try:
                                 # Clean up any pending tasks
@@ -369,7 +370,7 @@ class SQLConnectMagic(Magics):
                         return future.result()
                 except RuntimeError:
                     # No running loop - safe to use asyncio.run
-                    return asyncio.run(self._sqlconnect_async(line, cell))
+                    return asyncio.run(self._sqlconnect_async(line, cell or ""))
         except Exception as e:
             logger.error(f"Error in sql magic: {e}")
             self._display_error("Unexpected Error", str(e), "error")
@@ -432,7 +433,7 @@ class SQLConnectMagic(Magics):
                     print("🔍 Connections listed")
                 return connections_df
 
-            # Validate connection ID
+            # Validate connection ID (allow None and default to "direct")
             connection_id = args.connection_id.strip()
             if not validate_connection_id(connection_id):
                 raise ValidationError(f"Invalid connection ID: {connection_id}")
